@@ -1,66 +1,116 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { motion } from "framer-motion";
-
-const COINMARKETCAP_API = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest";
-const API_KEY = "c9f5c426-98fc-4633-a6c0-ff00b8b1e9ed"; // Replace with your actual API key
-const UPDATE_INTERVAL = 24 * 60 * 60 * 1000 / 10; // 10 times per day
-
-export default function CryptoDashboard() {
-  const [theme, setTheme] = useState("matrix");
-  const [prices, setPrices] = useState({});
-
-  const fetchCryptoPrices = async () => {
-    try {
-      const response = await fetch(`${COINMARKETCAP_API}?symbol=BTC,ETH&convert=USD`, {
-        headers: {
-          "X-CMC_PRO_API_KEY": API_KEY,
-          "Accept": "application/json"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
         }
-      });
-      const data = await response.json();
-      setPrices({
-        BTCUSDT: data.data.BTC.quote.USD.price,
-        ETHUSDT: data.data.ETH.quote.USD.price,
-      });
-    } catch (error) {
-      console.error("Error fetching crypto prices:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchCryptoPrices();
-    const interval = setInterval(fetchCryptoPrices, UPDATE_INTERVAL);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className={theme === "matrix" ? "bg-black text-green-400" : "bg-gray-900 text-white"}>
-      <div className="p-4 flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Crypto Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <span>Matrix Mode</span>
-          <Switch checked={theme === "matrix"} onCheckedChange={() => setTheme(theme === "matrix" ? "default" : "matrix")} />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-4 p-4">
-        {Object.entries(prices).map(([symbol, price]) => (
-          <motion.div key={symbol} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <h2 className="text-xl font-bold">{symbol}</h2>
-                <p className="text-2xl">${price.toFixed(2)}</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+        h1 {
+            margin-bottom: 20px;
+        }
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .loading {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cryptocurrency Prices</h1>
+    <div id="crypto-table-container">
+        <p class="loading">Loading...</p>
     </div>
-  );
-}
 
-// Ensure Vercel rewrites work correctly
-export const config = {
-  runtime: "edge"
-};
+    <script>
+        const apiKey = 'c9f5c426-98fc-4633-a6c0-ff00b8b1e9ed';
+        async function fetchCryptoPrices() {
+            const response = await fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest', {
+                method: 'GET',
+                headers: {
+                    'X-CMC_PRO_API_KEY': apiKey,
+                    'Accept': 'application/json'
+                }
+            });
+            return response.json();
+        }
+
+        function createCryptoTable(data) {
+            const tableContainer = document.getElementById('crypto-table-container');
+            tableContainer.innerHTML = '';
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+
+            const headers = ['#', 'Name', 'Symbol', 'Current Price', 'Market Cap', '24h Change'];
+            const tr = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                tr.appendChild(th);
+            });
+            thead.appendChild(tr);
+
+            data.forEach((crypto, index) => {
+                const tr = document.createElement('tr');
+                const tdIndex = document.createElement('td');
+                tdIndex.textContent = index + 1;
+                tr.appendChild(tdIndex);
+
+                const tdName = document.createElement('td');
+                tdName.textContent = crypto.name;
+                tr.appendChild(tdName);
+
+                const tdSymbol = document.createElement('td');
+                tdSymbol.textContent = crypto.symbol;
+                tr.appendChild(tdSymbol);
+
+                const tdPrice = document.createElement('td');
+                tdPrice.textContent = `$${crypto.quote.USD.price.toFixed(2)}`;
+                tr.appendChild(tdPrice);
+
+                const tdMarketCap = document.createElement('td');
+                tdMarketCap.textContent = `$${crypto.quote.USD.market_cap.toLocaleString()}`;
+                tr.appendChild(tdMarketCap);
+
+                const tdChange = document.createElement('td');
+                tdChange.textContent = `${crypto.quote.USD.percent_change_24h.toFixed(2)}%`;
+                tdChange.style.color = crypto.quote.USD.percent_change_24h >= 0 ? 'green' : 'red';
+                tr.appendChild(tdChange);
+
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const cryptoData = await fetchCryptoPrices();
+            createCryptoTable(cryptoData.data);
+        });
+    </script>
+</body>
+</html>
