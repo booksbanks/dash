@@ -1,0 +1,54 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { motion } from "framer-motion";
+import useWebSocket from "react-use-websocket";
+
+const MATRIX_API = "wss://ws.example.com/crypto-prices"; // Placeholder WebSocket API
+
+export default function CryptoDashboard() {
+  const [theme, setTheme] = useState("matrix");
+  const [prices, setPrices] = useState({});
+  const [alerts, setAlerts] = useState([]);
+  const { sendMessage, lastMessage } = useWebSocket(MATRIX_API, {
+    onMessage: (message) => {
+      const data = JSON.parse(message.data);
+      setPrices(data);
+      checkAlerts(data);
+    },
+    shouldReconnect: () => true,
+  });
+
+  const checkAlerts = (data) => {
+    const newAlerts = Object.keys(data).filter((symbol) => {
+      return alerts.some(alert => alert.symbol === symbol && data[symbol] >= alert.price);
+    });
+    if (newAlerts.length > 0) {
+      alert(`Price alert triggered for: ${newAlerts.join(", ")}`);
+    }
+  };
+
+  return (
+    <div className={theme === "matrix" ? "bg-black text-green-400" : "bg-gray-900 text-white"}>
+      <div className="p-4 flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Crypto Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <span>Matrix Mode</span>
+          <Switch checked={theme === "matrix"} onCheckedChange={() => setTheme(theme === "matrix" ? "default" : "matrix")} />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-4 p-4">
+        {Object.entries(prices).map(([symbol, price]) => (
+          <motion.div key={symbol} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <h2 className="text-xl font-bold">{symbol}</h2>
+                <p className="text-2xl">${price.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
